@@ -46,7 +46,6 @@ class World:
 
     def update_listeners(self, entity):
         '''update the set listeners'''
-        #print "UPDATE LISTENERS"
         for listener in self.listeners:
             listener(entity, self.get(entity))
 
@@ -79,7 +78,6 @@ clients = list()
 
 
 def send_all(msg):
-    #print "UPDATE CLIENTS"
     for client in clients:
         client.put(msg) # Update each client
 
@@ -90,7 +88,6 @@ def send_all_json(obj):
 
 def set_listener( entity, data ):
     ''' do something with the update ! '''
-    #print "SET LISTENER"
     send_all_json({entity:data}) # Will eventually update clients
 
 
@@ -112,12 +109,8 @@ def read_ws(ws,client):
     try:
         while True:
             msg = ws.receive()
-            #print "WS RECV: %s" % msg
             if (msg is not None):
                 packet = json.loads(msg)
-                #print "PACKET", packet
-                #print "ENTITY", packet.keys()[0]
-                #print "DATA", packet.values()[0]
                 entity = packet.keys()[0] # Get entity
                 data = packet[entity]     # Get data
                 myWorld.set(entity, data) # Update world (which will eventually update clients)
@@ -137,7 +130,6 @@ def subscribe_socket(ws):
        websocket and read updates from the websocket '''
     client = Client()
     clients.append(client)
-    #print "ADD CLIENT"
     # Want new client to have current state of world when they join,
     # so we have to get them up to speed
     world = myWorld.world()
@@ -148,7 +140,6 @@ def subscribe_socket(ws):
     try:
         while True:
             msg = client.get()
-            #print "Got a message!", ws, msg
             ws.send(msg)
     except Exception as e:
         print "WS Error %s" % e
@@ -171,7 +162,6 @@ def flask_post_json():
 @app.route("/entity/<entity>", methods=['POST','PUT'])
 def update(entity):
     '''update the entities via this interface'''
-    #print "UPDATE"
     data = flask_post_json()
     myWorld.set(entity, data)
     data = json.dumps(myWorld.get(entity))
@@ -181,14 +171,12 @@ def update(entity):
 @app.route("/world", methods=['POST','GET'])    
 def world():
     '''you should probably return the world here'''
-    #print "WORLD"
     data = json.dumps(myWorld.world())
     return data
 
 
 @app.route("/entity/<entity>")    
 def get_entity(entity):
-    #print "GET ENTITY"
     '''This is the GET version of the entity interface, return a representation of the entity'''
     data = json.dumps(myWorld.get(entity))
     return data
@@ -196,7 +184,6 @@ def get_entity(entity):
 
 @app.route("/clear", methods=['POST','GET'])
 def clear():
-    #print "CLEAR"
     '''Clear the world out!'''
     data = json.dumps(myWorld.clear())
     return data
