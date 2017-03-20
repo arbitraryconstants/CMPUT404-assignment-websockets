@@ -57,3 +57,35 @@ Contributors
 
 * Mark Galloway
 * Abram Hindle
+* Alanna
+
+References
+===========
+
+* Re: How to send stuff through socket based on code by Abram Hindle,
+  URL: https://github.com/abramhindle/WebSocketsExamples/blob/master/static/broadcast.html
+  License: Apache License, Version 2.0
+
+* Re: Overview understanding of socket methods, By Tutorials Point,
+  URL: https://www.tutorialspoint.com/html5/html5_websocket.htm,
+  License: Not Listed
+
+* Re: Code for wsSetup based on code by Abram Hindle,
+  URL: https://github.com/abramhindle/WebSocketsExamples/blob/master/static/broadcast.html
+  License: Apache License, Version 2.0
+
+* Code for Client, send_all, send_all_json by Abram Hindle,
+  URL: https://github.com/abramhindle/WebSocketsExamples/blob/master/broadcaster.py,
+  License:  Apache License, Version 2.0
+
+* Code for read_ws based on code by Abram Hindle
+  URL: https://github.com/abramhindle/WebSocketsExamples/blob/master/broadcaster.py
+  License:  Apache License, Version 2.0
+
+* Code for subscribe_socket based on code by Abram Hindle
+  URL: https://github.com/abramhindle/WebSocketsExamples/blob/master/broadcaster.py
+  License:  Apache License, Version 2.0
+
+* Re: How to run app based on code by Abram Hindle
+  URL: https://github.com/abramhindle/WebSocketsExamples/blob/master/broadcaster.py
+  License:  Apache License, Version 2.0

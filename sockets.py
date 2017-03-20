@@ -13,40 +13,40 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 #
-import flask
-from flask import Flask, request
+from flask import Flask, request, redirect
 from flask_sockets import Sockets
 import gevent
 from gevent import queue
-import time
 import json
 import os
+
 
 app = Flask(__name__)
 sockets = Sockets(app)
 app.debug = True
 
+
 class World:
     def __init__(self):
         self.clear()
-        # we've got listeners now!
-        self.listeners = list()
-        
+        self.listeners = list() # We've got listeners now!
+
     def add_set_listener(self, listener):
-        self.listeners.append( listener )
+        self.listeners.append(listener)
 
     def update(self, entity, key, value):
         entry = self.space.get(entity,dict())
         entry[key] = value
         self.space[entity] = entry
-        self.update_listeners( entity )
+        self.update_listeners(entity)
 
     def set(self, entity, data):
         self.space[entity] = data
-        self.update_listeners( entity )
+        self.update_listeners(entity)
 
     def update_listeners(self, entity):
         '''update the set listeners'''
+        #print "UPDATE LISTENERS"
         for listener in self.listeners:
             listener(entity, self.get(entity))
 
@@ -59,29 +59,102 @@ class World:
     def world(self):
         return self.space
 
-myWorld = World()        
+myWorld = World()
+
+
+# Code for Client, send_all, send_all_json by Abram Hindle,
+# URL: https://github.com/abramhindle/WebSocketsExamples/blob/master/broadcaster.py,
+# License:  Apache License, Version 2.0
+class Client:
+    def __init__(self):
+        self.queue = queue.Queue()
+
+    def put(self, v):
+        self.queue.put_nowait(v)
+
+    def get(self):
+        return self.queue.get()
+
+clients = list()
+
+
+def send_all(msg):
+    #print "UPDATE CLIENTS"
+    for client in clients:
+        client.put(msg) # Update each client
+
+
+def send_all_json(obj):
+    send_all(json.dumps(obj)) # Call to update clients
+
 
 def set_listener( entity, data ):
     ''' do something with the update ! '''
+    #print "SET LISTENER"
+    send_all_json({entity:data}) # Will eventually update clients
 
-myWorld.add_set_listener( set_listener )
-        
+
+myWorld.add_set_listener(set_listener)
+
+
 @app.route('/')
 def hello():
     '''Return something coherent here.. perhaps redirect to /static/index.html '''
-    return None
+    return redirect("/static/index.html")
 
+
+# Code for read_ws based on code by Abram Hindle
+# URL: https://github.com/abramhindle/WebSocketsExamples/blob/master/broadcaster.py
+# License:  Apache License, Version 2.0
+# Read from socket
 def read_ws(ws,client):
     '''A greenlet function that reads from the websocket and updates the world'''
-    # XXX: TODO IMPLEMENT ME
-    return None
+    try:
+        while True:
+            msg = ws.receive()
+            #print "WS RECV: %s" % msg
+            if (msg is not None):
+                packet = json.loads(msg)
+                #print "PACKET", packet
+                #print "ENTITY", packet.keys()[0]
+                #print "DATA", packet.values()[0]
+                entity = packet.keys()[0] # Get entity
+                data = packet[entity]     # Get data
+                myWorld.set(entity, data) # Update world (which will eventually update clients)
+            else:
+                break
+    except:
+        '''Done'''
 
+
+# Code for subscribe_socket based on code by Abram Hindle
+# URL: https://github.com/abramhindle/WebSocketsExamples/blob/master/broadcaster.py
+# License:  Apache License, Version 2.0
+# Write to socket
 @sockets.route('/subscribe')
 def subscribe_socket(ws):
     '''Fufill the websocket URL of /subscribe, every update notify the
        websocket and read updates from the websocket '''
-    # XXX: TODO IMPLEMENT ME
-    return None
+    client = Client()
+    clients.append(client)
+    #print "ADD CLIENT"
+    # Want new client to have current state of world when they join,
+    # so we have to get them up to speed
+    world = myWorld.world()
+    for entity in world.keys():
+        data = world[entity]
+        myWorld.set(entity, data)
+    g = gevent.spawn(read_ws, ws, client)
+    try:
+        while True:
+            msg = client.get()
+            #print "Got a message!", ws, msg
+            ws.send(msg)
+    except Exception as e:
+        print "WS Error %s" % e
+    finally:
+        clients.remove(client)
+        gevent.kill(g)
 
 
 def flask_post_json():
@@ -94,27 +167,39 @@ def flask_post_json():
     else:
         return json.loads(request.form.keys()[0])
 
+
 @app.route("/entity/<entity>", methods=['POST','PUT'])
 def update(entity):
     '''update the entities via this interface'''
-    return None
+    #print "UPDATE"
+    data = flask_post_json()
+    myWorld.set(entity, data)
+    data = json.dumps(myWorld.get(entity))
+    return data
+
 
 @app.route("/world", methods=['POST','GET'])    
 def world():
     '''you should probably return the world here'''
-    return None
+    #print "WORLD"
+    data = json.dumps(myWorld.world())
+    return data
+
 
 @app.route("/entity/<entity>")    
 def get_entity(entity):
+    #print "GET ENTITY"
     '''This is the GET version of the entity interface, return a representation of the entity'''
-    return None
+    data = json.dumps(myWorld.get(entity))
+    return data
 
 
 @app.route("/clear", methods=['POST','GET'])
 def clear():
+    #print "CLEAR"
     '''Clear the world out!'''
-    return None
-
+    data = json.dumps(myWorld.clear())
+    return data
 
 
 if __name__ == "__main__":
@@ -123,4 +208,7 @@ if __name__ == "__main__":
         and run
         gunicorn -k flask_sockets.worker sockets:app
     '''
-    app.run()
+    # Re: How to run app based on code by Abram Hindle
+    # URL: https://github.com/abramhindle/WebSocketsExamples/blob/master/broadcaster.py
+    # License:  Apache License, Version 2.0
+    os.system("bash run.sh")
